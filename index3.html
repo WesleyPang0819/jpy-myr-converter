@@ -14,23 +14,27 @@
             justify-content: center;
             font-family: system-ui, -apple-system, sans-serif;
             margin: 0;
-            padding: 0;
+            padding: 1rem; /* 强制手机端最外层留白一致 */
         }
         .card {
             background: white;
             border-radius: 2rem;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.08);
-            width: calc(100% - 2rem); /* 确保左右留白一致 */
+            width: 100%; /* 配合 body 的 padding 实现左右对称 */
             max-width: 400px;
         }
         .rotate-180 {
             transform: rotate(180deg);
         }
+        /* 移除移动端点击高亮 */
+        * {
+            -webkit-tap-highlight-color: transparent;
+        }
     </style>
 </head>
 <body>
 
-<div class="card p-6 sm:p-8 my-4 mx-4">
+<div class="card p-6 sm:p-8">
     <div class="text-center mb-6">
         <div class="inline-block p-3 bg-blue-50 rounded-full mb-4">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -41,7 +45,7 @@
         <p class="text-gray-500 text-sm" id="title-desc">日元 JPY ⇄ 马币 MYR</p>
     </div>
 
-    <!-- 汇率显示卡片 (点击可切换视角) -->
+    <!-- 汇率显示卡片 -->
     <div id="status-box" onclick="toggleView()" class="bg-blue-600 rounded-2xl p-5 mb-6 text-white text-center shadow-lg shadow-blue-200 cursor-pointer active:scale-95 transition-all relative overflow-hidden group">
         <div class="absolute right-2 top-2 opacity-20 group-hover:opacity-100 transition-opacity">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -151,7 +155,7 @@
         isJpyMaster = !isJpyMaster;
         swapIcon.classList.toggle('rotate-180');
         
-        // 交换输入框里的数值，保持转换逻辑一致
+        // 交换输入框里的数值
         const tempVal = input1.value;
         input1.value = input2.value;
         input2.value = tempVal;
