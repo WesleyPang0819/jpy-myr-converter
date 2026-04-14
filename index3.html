@@ -1,0 +1,212 @@
+< index3.html >
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>JPY/MYR 实时汇率转换</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .card {
+            background: white;
+            border-radius: 2rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.08);
+            width: calc(100% - 2rem); /* 确保左右留白一致 */
+            max-width: 400px;
+        }
+        .rotate-180 {
+            transform: rotate(180deg);
+        }
+    </style>
+</head>
+<body>
+
+<div class="card p-6 sm:p-8 my-4 mx-4">
+    <div class="text-center mb-6">
+        <div class="inline-block p-3 bg-blue-50 rounded-full mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+            </svg>
+        </div>
+        <h1 class="text-2xl font-bold text-gray-800">实时汇率转换</h1>
+        <p class="text-gray-500 text-sm" id="title-desc">日元 JPY ⇄ 马币 MYR</p>
+    </div>
+
+    <!-- 汇率显示卡片 (点击可切换视角) -->
+    <div id="status-box" onclick="toggleView()" class="bg-blue-600 rounded-2xl p-5 mb-6 text-white text-center shadow-lg shadow-blue-200 cursor-pointer active:scale-95 transition-all relative overflow-hidden group">
+        <div class="absolute right-2 top-2 opacity-20 group-hover:opacity-100 transition-opacity">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+            </svg>
+        </div>
+        <span class="opacity-80 text-xs font-medium uppercase tracking-widest" id="rate-label">当前实时汇率 (JPY/MYR)</span>
+        <div class="text-2xl font-bold mt-1" id="rate-text">获取中...</div>
+        <div class="text-[10px] opacity-70 mt-2" id="update-time">正在连接全球汇率库...</div>
+    </div>
+
+    <div class="space-y-4 relative">
+        <!-- Input 1 -->
+        <div class="relative">
+            <label class="text-xs font-bold text-gray-400 ml-1 uppercase" id="label-1">日本日元 (JPY)</label>
+            <div class="flex items-center mt-1 bg-gray-50 rounded-xl px-4 py-3 border border-transparent focus-within:border-blue-500 transition-all">
+                <span class="text-xl font-semibold text-gray-400 mr-3" id="symbol-1">¥</span>
+                <input type="number" id="input-1" class="bg-transparent w-full text-xl font-bold text-gray-800 outline-none" placeholder="0">
+            </div>
+        </div>
+
+        <!-- 切换按钮 -->
+        <div class="flex justify-center -my-3 relative z-10">
+            <button onclick="toggleView()" class="bg-white border border-gray-100 rounded-full p-2 shadow-md hover:shadow-lg active:scale-90 transition-all text-blue-600">
+                <svg xmlns="http://www.w3.org/2000/svg" id="swap-icon" class="h-5 w-5 transition-transform duration-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- Input 2 -->
+        <div class="relative">
+            <label class="text-xs font-bold text-gray-400 ml-1 uppercase" id="label-2">马来西亚林吉特 (MYR)</label>
+            <div class="flex items-center mt-1 bg-gray-50 rounded-xl px-4 py-3 border border-transparent focus-within:border-blue-500 transition-all">
+                <span class="text-xl font-semibold text-gray-400 mr-3" id="symbol-2">RM</span>
+                <input type="number" id="input-2" class="bg-transparent w-full text-xl font-bold text-gray-800 outline-none" placeholder="0">
+            </div>
+        </div>
+    </div>
+
+    <!-- 动态快捷键 -->
+    <div class="mt-8">
+        <p class="text-[10px] font-bold text-gray-300 uppercase mb-2 ml-1">快速转换</p>
+        <div class="grid grid-cols-3 gap-2" id="quick-btns">
+            <!-- 由 JS 动态填充 -->
+        </div>
+    </div>
+
+    <p class="text-[10px] text-gray-400 text-center mt-8 italic">数据源: ExchangeRate-API (实时同步)</p>
+</div>
+
+<script>
+    let rateJPYtoMYR = 0.0248; // 默认值
+    let isJpyMaster = true; // 是否以日元作为主要视角
+    
+    const input1 = document.getElementById('input-1');
+    const input2 = document.getElementById('input-2');
+    const rateText = document.getElementById('rate-text');
+    const updateTime = document.getElementById('update-time');
+    const rateLabel = document.getElementById('rate-label');
+    const swapIcon = document.getElementById('swap-icon');
+    const label1 = document.getElementById('label-1');
+    const label2 = document.getElementById('label-2');
+    const symbol1 = document.getElementById('symbol-1');
+    const symbol2 = document.getElementById('symbol-2');
+
+    // 获取实时数据
+    async function fetchRate() {
+        try {
+            const response = await fetch('https://open.er-api.com/v6/latest/JPY');
+            const data = await response.json();
+            if(data && data.rates && data.rates.MYR) {
+                rateJPYtoMYR = data.rates.MYR;
+                updateDisplay();
+                const d = new Date();
+                updateTime.innerText = `同步成功: ${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`;
+            }
+        } catch (e) {
+            rateText.innerText = "网络连接不稳定";
+        }
+    }
+
+    // 更新界面显示
+    function updateDisplay() {
+        if (isJpyMaster) {
+            rateText.innerText = `1 JPY = ${rateJPYtoMYR.toFixed(5)} MYR`;
+            rateLabel.innerText = "当前实时汇率 (日元兑马币)";
+            label1.innerText = "日本日元 (JPY)";
+            symbol1.innerText = "¥";
+            label2.innerText = "马来西亚林吉特 (MYR)";
+            symbol2.innerText = "RM";
+        } else {
+            const rateMYRtoJPY = 1 / rateJPYtoMYR;
+            rateText.innerText = `1 MYR = ${rateMYRtoJPY.toFixed(2)} JPY`;
+            rateLabel.innerText = "当前实时汇率 (马币兑日元)";
+            label1.innerText = "马来西亚林吉特 (MYR)";
+            symbol1.innerText = "RM";
+            label2.innerText = "日本日元 (JPY)";
+            symbol2.innerText = "¥";
+        }
+        renderQuickBtns();
+        convert1to2();
+    }
+
+    // 切换视角
+    function toggleView() {
+        isJpyMaster = !isJpyMaster;
+        swapIcon.classList.toggle('rotate-180');
+        
+        // 交换输入框里的数值，保持转换逻辑一致
+        const tempVal = input1.value;
+        input1.value = input2.value;
+        input2.value = tempVal;
+        
+        updateDisplay();
+    }
+
+    function convert1to2() {
+        const val = parseFloat(input1.value);
+        if (isNaN(val)) { input2.value = ''; return; }
+        
+        if (isJpyMaster) {
+            input2.value = (val * rateJPYtoMYR).toFixed(2);
+        } else {
+            input2.value = (val * (1/rateJPYtoMYR)).toFixed(0);
+        }
+    }
+
+    function convert2to1() {
+        const val = parseFloat(input2.value);
+        if (isNaN(val)) { input1.value = ''; return; }
+        
+        if (isJpyMaster) {
+            input1.value = (val / rateJPYtoMYR).toFixed(0);
+        } else {
+            input1.value = (val / (1/rateJPYtoMYR)).toFixed(2);
+        }
+    }
+
+    function renderQuickBtns() {
+        const container = document.getElementById('quick-btns');
+        const vals = isJpyMaster ? [1000, 10000, 100000] : [100, 1000, 5000];
+        const unit = isJpyMaster ? '¥' : 'RM';
+        
+        container.innerHTML = vals.map(v => `
+            <button onclick="quickSet(${v})" class="py-2 text-xs font-bold bg-gray-50 text-gray-500 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-all border border-gray-100">
+                ${v.toLocaleString()} ${unit}
+            </button>
+        `).join('');
+    }
+
+    function quickSet(val) {
+        input1.value = val;
+        convert1to2();
+    }
+
+    input1.addEventListener('input', convert1to2);
+    input2.addEventListener('input', convert2to1);
+
+    window.onload = () => {
+        fetchRate();
+        input1.value = 1000;
+        updateDisplay();
+    };
+</script>
+
+</body>
+</html>
